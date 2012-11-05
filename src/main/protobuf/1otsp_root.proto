@@ -1,0 +1,30 @@
+package otsp;
+
+option java_package = "com.tokbox.tumor.proto";
+option java_outer_classname = "OtspCore";
+
+// top-level container
+message OtspMessage {
+  enum Topology { UNICAST = 1; ANYCAST = 2; MULTICAST = 3; BROADCAST = 4; }
+  optional Topology topology = 1 [default = UNICAST];
+
+  optional OtspNodeAddress from = 2;
+  optional OtspNodeAddress to = 3;
+  optional uint32 mask = 4;
+  optional uint32 id = 5;
+
+  //used to support routing layer
+  extensions 10 to 99;
+
+  //used for protocol-layer extensions
+  extensions 100 to 999;
+}
+
+message OtspNodeAddress { 
+//  having trouble deciding...
+//  required fixed32 gateway = 1;
+//  required fixed32 node = 2;
+  required bytes address = 1;
+}
+
+

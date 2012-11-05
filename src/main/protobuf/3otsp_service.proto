@@ -1,0 +1,37 @@
+package otsp;
+
+option java_package = "com.tokbox.tumor.proto";
+option java_outer_classname = "OtspService";
+
+import "1otsp_root.proto";
+
+extend OtspMessage {
+  optional Push push = 100;
+  optional Presence presence = 101;
+  optional IQ iq = 102;
+  optional Authenticate authenticate = 103;
+}
+
+message Push {
+  extensions 100 to max;
+}
+
+message Presence {
+  extensions 10 to 99;   //extended presence descriptions
+  extensions 100 to max; //applications using presence
+}
+
+message IQ {
+  enum Type { SET = 1; GET = 2; RESULT = 3; ERROR = 4; }
+  optional Type type = 1;
+
+  extensions 100 to max;
+}
+
+message Authenticate {
+  enum OpCode { CHALLENGE = 1; RESPONSE = 2; SUCCESS = 3; FAILURE = 4; }
+  optional OpCode opcode = 1;
+  optional string content = 2;
+
+  extensions 100 to max;
+}

@@ -1,0 +1,38 @@
+package otsp;
+
+option java_package = "com.tokbox.tumor.proto";
+option java_outer_classname = "OtspRouting";
+
+import "1otsp_root.proto";
+
+extend OtspMessage {
+  optional GroupManagement groupManagement = 10;
+  optional ControlManagement controlManagement = 11;
+  optional ConnectionManagement connectionManagement = 12;
+  optional Signature signature = 13;
+}
+
+message GroupManagement {
+  enum OpCode { QUERY = 1; REPORT = 2; LEAVE = 3; }
+  required OpCode opcode = 1;
+//  repeated OtspNodeAddress addresses = 2 [packed=true]; //apparently we can't efficiently pack complex types :-(
+  repeated OtspNodeAddress addresses = 2;
+}
+
+message ControlManagement {
+  enum OpCode { PING = 1; PONG = 2; }
+  required OpCode opcode = 1;
+}
+
+message ConnectionManagement {
+  enum OpCode { CONNECT = 1; KEEPALIVE = 2; }
+  required OpCode opcode = 1;
+  optional bytes dhprime = 2;
+  optional bytes dhbase = 3;
+  optional bytes dhpublic = 4;
+}
+
+message Signature {
+  optional bytes challenge = 1;
+  optional bytes signature = 2;
+}

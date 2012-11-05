@@ -1,0 +1,78 @@
+package otsp;
+
+option java_package = "com.tokbox.tumor.proto";
+option java_outer_classname = "OtspApp";
+
+import "1otsp_root.proto";
+import "3otsp_service.proto"; 
+
+//Session Activities
+extend Presence {
+  optional SessionStatus sessionStatus = 10;
+  
+  optional OTSession session = 100;
+  optional OTConnection connection = 101;
+}
+
+message SessionStatus { 
+  enum Type { NOP    = 0;   // any presence
+              JOIN   = 1;   // informs that a user has joined
+              LEAVE  = 2;   // informs that a user has left
+              KICKED = 3;   // informs that a user has been kicked
+            }
+  optional Type type = 1;
+}
+
+message OTSession {
+  optional string sessionId = 1;
+}
+
+message OTConnection {
+  optional bytes uuid = 1;
+}
+
+//Stream Activities
+extend IQ {
+
+  optional OTFunction function = 100;
+  optional OTResult result = 101;
+  optional OTStream stream = 110;
+}
+
+message OTFunction { 
+  enum Type { NOP     = 0;
+              CREATE  = 1;
+              DELETE  = 2;
+              UPDATE  = 3;  // informs that a user has been kicked
+            }
+  optional Type type = 1;
+}
+
+message OTResult {
+  enum Status {
+                  OK = 200;
+                  UNAUTHORIZED = 401;
+              }
+  optional Status status = 1;
+}
+
+message OTStream {
+  optional bytes uuid = 1;
+  optional string sdes = 2;
+  repeated OTSession sessions = 3;
+}
+
+extend IQ {
+  optional OTCallActivity call = 120;
+}
+
+message OTCallActivity {
+  enum OpCode { SESSION_INITIATE = 1; SESSION_ACCEPT = 2; SESSION_TERMINATE = 4; SESSION_REQUEST = 5; }
+  optional OpCode opcode = 1;
+  optional OTCallContent content = 2;
+}
+
+message OTCallContent {
+  // transport
+  // media description
+}
