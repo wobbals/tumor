@@ -39,7 +39,7 @@ public class EncryptionService {
 		return null;
 	}
 	
-	public static byte[] decrypt(byte[] bytes, RoutableNode node) {
+	public static byte[] decrypt(RoutableNode node, byte[] bytes, int offset, int length) {
 		try {
 			return node.getDecryptCipher().doFinal(bytes);
 		} catch (IllegalBlockSizeException e) {

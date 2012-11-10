@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Socket;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
@@ -33,18 +34,30 @@ import com.tokbox.tumor.security.EncryptionService;
  * At a minimum, register each address that gets picked up in the bind to the router service.
  *
  */
-public class TumorServer {
+public class TumorRouter {
 	private ExecutorService executor;
-	private ZMQ.Socket replyService;
+	private ZMQ.Socket[] replyServiceWorkers;
 	private ZMQ.Socket publishService;
+	private ZMQ.Socket requestServiceRouter;
+	private ZMQ.Socket requestServiceDealer;
+	private ZMQ.Context context;
+	private int numWorkers;
 
-	public TumorServer() {
+	public TumorRouter() {
+		this(1);
+	}
+
+	public TumorRouter(int numWorkers) {
+		this.numWorkers = numWorkers;
 		//  Prepare our context and socket
-		ZMQ.Context context = ZMQ.context(1);
-		replyService = context.socket(ZMQ.REP); 
-		replyService.bind("tcp://*:5555");
+		context = ZMQ.context(1);
 		publishService = context.socket(ZMQ.PUB);
 		publishService.bind("tcp://*:5556");
+
+		requestServiceRouter = context.socket(ZMQ.ROUTER);
+		requestServiceRouter.bind("tcp://*:5555");
+		requestServiceDealer = context.socket(ZMQ.DEALER);
+		requestServiceDealer.bind("inproc://workers");
 
 		//TODO router-dealer the service, create reps on each thread (or poll?)
 		//TODO recycle proto message objects
@@ -53,8 +66,17 @@ public class TumorServer {
 	}
 
 	public void start() {
-		executor = Executors.newSingleThreadExecutor();
-		executor.submit(new MainLoop());		
+		executor = Executors.newCachedThreadPool();
+		executor.submit(new MainLoop());
+
+		System.out.printf("creating %d workers\n", numWorkers);
+		replyServiceWorkers = new ZMQ.Socket[numWorkers];
+		for (int i = 0; i < numWorkers; i++) {
+			ZMQ.Socket replyServiceWorker = context.socket(ZMQ.REP);
+			replyServiceWorker.connect("inproc://workers");
+			replyServiceWorkers[i] = replyServiceWorker;
+			executor.submit(new WorkerLoop(replyServiceWorker, i));
+		}
 	}
 
 	public void stop() {
@@ -66,16 +88,77 @@ public class TumorServer {
 		public void run() {
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
+					//  Initialize poll set
+					ZMQ.Poller items = context.poller(2);
+					int routerPollIndex = items.register(requestServiceRouter, ZMQ.Poller.POLLIN);
+					int dealerPollIndex = items.register(requestServiceDealer, ZMQ.Poller.POLLIN);
+					
+					boolean more = false;
+			        byte[] message;
+			        
+			        //  Switch messages between sockets
+			        while (!Thread.currentThread().isInterrupted()) {            
+			            //  poll and memorize multipart detection
+			            items.poll();
+
+			            if (items.pollin(routerPollIndex)) {
+			                while (true) {
+			                    // receive message
+			                    message = requestServiceRouter.recv(0);
+			                    more = requestServiceRouter.hasReceiveMore();
+
+			                    // Broker it
+			                    requestServiceDealer.send(message, more ? ZMQ.SNDMORE : 0);
+			                    if(!more){
+			                        break;
+			                    }
+			                }
+			            }
+			            if (items.pollin(dealerPollIndex)) {
+			                while (true) {
+			                    // receive message
+			                    message = requestServiceDealer.recv(0);
+			                    more = requestServiceDealer.hasReceiveMore();
+			                    // Broker it
+			                    requestServiceRouter.send(message,  more ? ZMQ.SNDMORE : 0);
+			                    if(!more){
+			                        break;
+			                    }
+			                }
+			            }
+			        }
+			        //  We never get here but clean up anyhow
+			        requestServiceRouter.close();
+			        requestServiceDealer.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	private class WorkerLoop implements Runnable {
+		ZMQ.Socket workerSocket;
+		@SuppressWarnings("unused") int id;
+		WorkerLoop(ZMQ.Socket workerSocket, int id) {
+			this.workerSocket = workerSocket;
+			this.id = id;
+		}
+
+		public void run() {
+			while (!Thread.currentThread().isInterrupted()) {
+				try {
 					byte[] request;
 
-					request = replyService.recv(0);
+					request = workerSocket.recv(0);
+					//System.out.printf("%d: received %d byte message\n", id, request.length);
 					//  In order to display the 0-terminated string as a String,
 					//  we omit the last byte from request
 					ExtensionRegistry registry = ExtensionRegistry.newInstance();
 					registry.add(OtspRouting.connectionManagement);
 					registry.add(OtspRouting.signature);
 					OtspMessage message = OtspMessage.parseFrom(ByteString.copyFrom(request, 0, request.length - 1), registry);
-					
+
 					byte[] responseData = null;
 
 					if (message.hasFrom() && message.hasTo()) {
@@ -85,30 +168,35 @@ public class TumorServer {
 					} else {
 						responseData = handleAnonymousMessage(message);
 					}
-					
+
 					if (null == responseData) {
 						responseData = new byte[1];
 						responseData[0] = 1;
 					}
-					
+
 					ByteBuffer responseBuffer = ByteBuffer.allocate(responseData.length + 1);
 					responseBuffer.put(responseData);
 					responseBuffer.put((byte) 0);
 					//  Send reply back to client
 					//  We will send a 0-terminated string (C string) back to the client,
 					//  so that this server also works with The Guide's C and C++ "Hello World" clients
-					replyService.send(responseBuffer.array(), 0);
+					workerSocket.send(responseBuffer.array(), 0);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
+			workerSocket.close();
 		}
 
 	}
 
 	public static void main( String[] args ) throws InvalidProtocolBufferException
 	{
-		TumorServer server = new TumorServer();
+		int numProcessors = Runtime.getRuntime().availableProcessors();
+		if (args.length > 0) {
+			numProcessors = Integer.parseInt(args[0]);
+		}
+		TumorRouter server = new TumorRouter(numProcessors);
 		server.start();
 	}
 
@@ -130,7 +218,7 @@ public class TumorServer {
 			System.out.println("dumping packet: no route to node");
 			return null; //control message: no route to host
 		}
-		
+
 		if (!EncryptionService.checkMessageSignature(message, messageFrom)) {
 			System.out.println("dumping packet: invalid signature");
 			return null;
@@ -139,15 +227,18 @@ public class TumorServer {
 		ByteBuffer destinationEnvelopeBuffer = ByteBuffer.allocate(messageTo.getNetworkId().length+1);
 		destinationEnvelopeBuffer.put(messageTo.getNetworkId());
 		destinationEnvelopeBuffer.put((byte) 0);
-		publishService.send(destinationEnvelopeBuffer.array(), ZMQ.SNDMORE);
-		publishService.send(EncryptionService.encrypt(request, messageTo), 0);
+		
+		synchronized(publishService) {
+			publishService.send(destinationEnvelopeBuffer.array(), ZMQ.SNDMORE);
+			publishService.send(EncryptionService.encrypt(request, messageTo), 0);
+		}
 		
 		OtspMessage responseMessage = OtspMessage.newBuilder()
 				.setFrom(getBoundNetworkNodeAddress())
 				.setTo(messageFrom.getOtspNodeAddress())
 				.setId(message.getId())
 				.build();
-		
+
 		return responseMessage.toByteArray();
 	}
 

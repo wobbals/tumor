@@ -71,8 +71,13 @@ public class RoutableNode {
 	}
 	
 	public static String bytesToOctets(byte[] bytes) {
+		return bytesToOctets(bytes, bytes.length);
+	}
+	
+	public static String bytesToOctets(byte[] bytes, int length) {
 		StringBuffer outputString = new StringBuffer();
-		for (byte someByte : bytes) {
+		for (int i = 0; i < length; i++) {
+			byte someByte = bytes[i];
 			outputString.append(String.format("%d.", 0xFF & someByte));
 		}
 		outputString.deleteCharAt(outputString.length() - 1);
