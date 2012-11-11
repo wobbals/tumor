@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec;
 import com.google.protobuf.ByteString;
 import com.tokbox.tumor.proto.OtspCore.OtspNodeAddress;
 
-public class RoutableNode {
+public class NodeInfo {
 	private static String TRANSPORT_CRYPTO_ALGORITHM = "AES";
 	private static String SECRET_HASH_ALGORITHM = "SHA-256";
 	private Long networkId;
@@ -24,7 +24,7 @@ public class RoutableNode {
 	private Cipher decryptCipher;
 	private Cipher encryptCipher;
 	
-	public RoutableNode(Long networkId) {
+	public NodeInfo(Long networkId) {
 		this.networkId = networkId;
 	}
 	

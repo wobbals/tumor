@@ -5,7 +5,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.zeromq.ZMQ;
-import org.zeromq.ZMQ.Socket;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
@@ -59,7 +58,6 @@ public class TumorRouter {
 		requestServiceDealer = context.socket(ZMQ.DEALER);
 		requestServiceDealer.bind("inproc://workers");
 
-		//TODO router-dealer the service, create reps on each thread (or poll?)
 		//TODO recycle proto message objects
 		//TODO multicast support (srsly do this first)
 		//TODO strip routing signature from request before forwarding
@@ -99,7 +97,7 @@ public class TumorRouter {
 			        //  Switch messages between sockets
 			        while (!Thread.currentThread().isInterrupted()) {            
 			            //  poll and memorize multipart detection
-			            items.poll();
+			            items.poll(1000);
 
 			            if (items.pollin(routerPollIndex)) {
 			                while (true) {
@@ -206,8 +204,8 @@ public class TumorRouter {
 		if (!fromNodeAddress.hasAddress() || !toNodeAddress.hasAddress()) {
 			return null; //TODO make error case
 		}
-		RoutableNode messageFrom = ClientPool.getClient(fromNodeAddress.getAddress().asReadOnlyByteBuffer().getLong());
-		RoutableNode messageTo = ClientPool.getClient(toNodeAddress.getAddress().asReadOnlyByteBuffer().getLong());
+		NodeInfo messageFrom = ClientPool.getClient(fromNodeAddress.getAddress().asReadOnlyByteBuffer().getLong());
+		NodeInfo messageTo = ClientPool.getClient(toNodeAddress.getAddress().asReadOnlyByteBuffer().getLong());
 
 		if (null == messageTo || null == messageFrom) {
 			return null; //TODO error
@@ -255,7 +253,7 @@ public class TumorRouter {
 		OtspRouting.ConnectionManagement connectionManagementMessage = message.getExtension(OtspRouting.connectionManagement);
 		DHExchangeGroup requestGroup = DHExchangeGroup.fromConnectionManagementMessage(connectionManagementMessage);
 		DHExchangeGroup responseGroup = DHExchangeGroup.generateResponse(requestGroup);
-		RoutableNode client = ClientPool.allocateNewClient();
+		NodeInfo client = ClientPool.allocateNewClient();
 		client.setSharedSecret(responseGroup.getSharedSecret());
 		System.out.println("Setting up new client");
 

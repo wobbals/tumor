@@ -3,20 +3,20 @@ package com.tokbox.tumor;
 import java.util.HashMap;
 
 public class ClientPool {
-	private static HashMap<Long, RoutableNode> clients = new HashMap<Long, RoutableNode>();
+	private static HashMap<Long, NodeInfo> clients = new HashMap<Long, NodeInfo>();
 		
-	public static RoutableNode allocateNewClient() {
+	public static NodeInfo allocateNewClient() {
 		Long clientNetworkAddress = generateRandomNetworkAddress();
 		while (clients.containsKey(clientNetworkAddress)) {
 			clientNetworkAddress = generateRandomNetworkAddress();
 		}
-		RoutableNode newClient = new RoutableNode(clientNetworkAddress);
+		NodeInfo newClient = new NodeInfo(clientNetworkAddress);
 		clients.put(newClient.getNetworkIdLong(), newClient);
 		System.out.println("created new client: "+newClient.toString());
 		return newClient;
 	}
 	
-	public static void evictClient(RoutableNode node) {
+	public static void evictClient(NodeInfo node) {
 		clients.remove(node.getNetworkIdLong());
 	}
 
@@ -29,7 +29,7 @@ public class ClientPool {
 		return clientNetworkAddress;
 	}
 
-	public static RoutableNode getClient(long clientNetworkId) {
+	public static NodeInfo getClient(long clientNetworkId) {
 		return clients.get(clientNetworkId);
 	}
 }

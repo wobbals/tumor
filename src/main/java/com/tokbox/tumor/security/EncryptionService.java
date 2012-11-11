@@ -8,7 +8,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
 import com.google.protobuf.ByteString;
-import com.tokbox.tumor.RoutableNode;
+import com.tokbox.tumor.NodeInfo;
 import com.tokbox.tumor.proto.OtspCore.OtspMessageOrBuilder;
 import com.tokbox.tumor.proto.OtspRouting;
 import com.tokbox.tumor.proto.OtspCore.OtspMessage;
@@ -26,7 +26,7 @@ public class EncryptionService {
 
 	private static MessageDigest digest; 
 
-	public static byte[] encrypt(byte[] bytes, RoutableNode node) {
+	public static byte[] encrypt(byte[] bytes, NodeInfo node) {
 		try {
 			return node.getEncryptCipher().doFinal(bytes);
 		} catch (IllegalBlockSizeException e) {
@@ -39,7 +39,7 @@ public class EncryptionService {
 		return null;
 	}
 	
-	public static byte[] decrypt(RoutableNode node, byte[] bytes, int offset, int length) {
+	public static byte[] decrypt(NodeInfo node, byte[] bytes, int offset, int length) {
 		try {
 			return node.getDecryptCipher().doFinal(bytes);
 		} catch (IllegalBlockSizeException e) {
@@ -52,7 +52,7 @@ public class EncryptionService {
 		return null;
 	}
 	
-	public static boolean checkMessageSignature(OtspMessageOrBuilder message, RoutableNode node) {
+	public static boolean checkMessageSignature(OtspMessageOrBuilder message, NodeInfo node) {
 		if (!message.hasExtension(OtspRouting.signature)) {
 			System.out.println("no signature extension");
 			return false;
@@ -74,7 +74,7 @@ public class EncryptionService {
 	}
 	
 	//TODO: salt?
-	public static byte[] generateMessageSignature(OtspMessageOrBuilder message, RoutableNode node) {
+	public static byte[] generateMessageSignature(OtspMessageOrBuilder message, NodeInfo node) {
 		if (!message.hasId()) {
 			return null;
 		}
@@ -93,7 +93,7 @@ public class EncryptionService {
 		return signature;
 	}
 	
-	public static OtspMessage.Builder signMessage(OtspMessage.Builder messageBuilder, RoutableNode node) {
+	public static OtspMessage.Builder signMessage(OtspMessage.Builder messageBuilder, NodeInfo node) {
 		if (!messageBuilder.hasId()) {
 			System.out.println("warning: unsignable message");
 			return messageBuilder;
