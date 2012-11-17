@@ -37,7 +37,7 @@ public class TumorNode {
 	private ZMQ.Socket sender;
 	private ZMQ.Socket receiver;
 	private NodeInfo nodeInfo;
-	private NodeInfo routerInfo;
+	@SuppressWarnings("unused") private NodeInfo routerInfo;
 	private ExecutorService executor;
 	private AtomicInteger routableMessageSeqno;
 

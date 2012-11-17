@@ -84,7 +84,7 @@ public class NodeInfo {
 		return outputString.toString();
 	}
 	
-	private String longToOctets(long someLong) {
+	public static String longToOctets(long someLong) {
 		StringBuffer outputString = new StringBuffer();
 		for (int shiftBytes = 7; shiftBytes >= 0 ; shiftBytes--) {
 			long mask = 0x00000000000000FFL;

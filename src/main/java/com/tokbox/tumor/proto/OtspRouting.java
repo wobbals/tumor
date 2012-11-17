@@ -727,9 +727,13 @@ public final class OtspRouting {
   public interface ControlManagementOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
     
-    // required .otsp.ControlManagement.OpCode opcode = 1;
-    boolean hasOpcode();
-    com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode getOpcode();
+    // required .otsp.ControlManagement.Type type = 1;
+    boolean hasType();
+    com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type getType();
+    
+    // optional .otsp.ControlManagement.Code code = 2;
+    boolean hasCode();
+    com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code getCode();
   }
   public static final class ControlManagement extends
       com.google.protobuf.GeneratedMessage
@@ -759,35 +763,41 @@ public final class OtspRouting {
       return com.tokbox.tumor.proto.OtspRouting.internal_static_otsp_ControlManagement_fieldAccessorTable;
     }
     
-    public enum OpCode
+    public enum Type
         implements com.google.protobuf.ProtocolMessageEnum {
-      PING(0, 1),
-      PONG(1, 2),
+      ECHO_REPLY(0, 0),
+      DESTINATION_UNREACHABLE(1, 3),
+      ECHO_REQUEST(2, 8),
+      PARAMETER_PROBLEM(3, 12),
       ;
       
-      public static final int PING_VALUE = 1;
-      public static final int PONG_VALUE = 2;
+      public static final int ECHO_REPLY_VALUE = 0;
+      public static final int DESTINATION_UNREACHABLE_VALUE = 3;
+      public static final int ECHO_REQUEST_VALUE = 8;
+      public static final int PARAMETER_PROBLEM_VALUE = 12;
       
       
       public final int getNumber() { return value; }
       
-      public static OpCode valueOf(int value) {
+      public static Type valueOf(int value) {
         switch (value) {
-          case 1: return PING;
-          case 2: return PONG;
+          case 0: return ECHO_REPLY;
+          case 3: return DESTINATION_UNREACHABLE;
+          case 8: return ECHO_REQUEST;
+          case 12: return PARAMETER_PROBLEM;
           default: return null;
         }
       }
       
-      public static com.google.protobuf.Internal.EnumLiteMap<OpCode>
+      public static com.google.protobuf.Internal.EnumLiteMap<Type>
           internalGetValueMap() {
         return internalValueMap;
       }
-      private static com.google.protobuf.Internal.EnumLiteMap<OpCode>
+      private static com.google.protobuf.Internal.EnumLiteMap<Type>
           internalValueMap =
-            new com.google.protobuf.Internal.EnumLiteMap<OpCode>() {
-              public OpCode findValueByNumber(int number) {
-                return OpCode.valueOf(number);
+            new com.google.protobuf.Internal.EnumLiteMap<Type>() {
+              public Type findValueByNumber(int number) {
+                return Type.valueOf(number);
               }
             };
       
@@ -804,11 +814,11 @@ public final class OtspRouting {
         return com.tokbox.tumor.proto.OtspRouting.ControlManagement.getDescriptor().getEnumTypes().get(0);
       }
       
-      private static final OpCode[] VALUES = {
-        PING, PONG, 
+      private static final Type[] VALUES = {
+        ECHO_REPLY, DESTINATION_UNREACHABLE, ECHO_REQUEST, PARAMETER_PROBLEM, 
       };
       
-      public static OpCode valueOf(
+      public static Type valueOf(
           com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
         if (desc.getType() != getDescriptor()) {
           throw new java.lang.IllegalArgumentException(
@@ -820,34 +830,120 @@ public final class OtspRouting {
       private final int index;
       private final int value;
       
-      private OpCode(int index, int value) {
+      private Type(int index, int value) {
         this.index = index;
         this.value = value;
       }
       
-      // @@protoc_insertion_point(enum_scope:otsp.ControlManagement.OpCode)
+      // @@protoc_insertion_point(enum_scope:otsp.ControlManagement.Type)
+    }
+    
+    public enum Code
+        implements com.google.protobuf.ProtocolMessageEnum {
+      NETWORK_UNREACHABLE(0, 30),
+      NODE_UNREACHABLE(1, 31),
+      SOURCE_NODE_ISOLATED(2, 38),
+      SOURCE_SIGNATURE_FAILED(3, 123),
+      ;
+      
+      public static final int NETWORK_UNREACHABLE_VALUE = 30;
+      public static final int NODE_UNREACHABLE_VALUE = 31;
+      public static final int SOURCE_NODE_ISOLATED_VALUE = 38;
+      public static final int SOURCE_SIGNATURE_FAILED_VALUE = 123;
+      
+      
+      public final int getNumber() { return value; }
+      
+      public static Code valueOf(int value) {
+        switch (value) {
+          case 30: return NETWORK_UNREACHABLE;
+          case 31: return NODE_UNREACHABLE;
+          case 38: return SOURCE_NODE_ISOLATED;
+          case 123: return SOURCE_SIGNATURE_FAILED;
+          default: return null;
+        }
+      }
+      
+      public static com.google.protobuf.Internal.EnumLiteMap<Code>
+          internalGetValueMap() {
+        return internalValueMap;
+      }
+      private static com.google.protobuf.Internal.EnumLiteMap<Code>
+          internalValueMap =
+            new com.google.protobuf.Internal.EnumLiteMap<Code>() {
+              public Code findValueByNumber(int number) {
+                return Code.valueOf(number);
+              }
+            };
+      
+      public final com.google.protobuf.Descriptors.EnumValueDescriptor
+          getValueDescriptor() {
+        return getDescriptor().getValues().get(index);
+      }
+      public final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptorForType() {
+        return getDescriptor();
+      }
+      public static final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptor() {
+        return com.tokbox.tumor.proto.OtspRouting.ControlManagement.getDescriptor().getEnumTypes().get(1);
+      }
+      
+      private static final Code[] VALUES = {
+        NETWORK_UNREACHABLE, NODE_UNREACHABLE, SOURCE_NODE_ISOLATED, SOURCE_SIGNATURE_FAILED, 
+      };
+      
+      public static Code valueOf(
+          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+        if (desc.getType() != getDescriptor()) {
+          throw new java.lang.IllegalArgumentException(
+            "EnumValueDescriptor is not for this type.");
+        }
+        return VALUES[desc.getIndex()];
+      }
+      
+      private final int index;
+      private final int value;
+      
+      private Code(int index, int value) {
+        this.index = index;
+        this.value = value;
+      }
+      
+      // @@protoc_insertion_point(enum_scope:otsp.ControlManagement.Code)
     }
     
     private int bitField0_;
-    // required .otsp.ControlManagement.OpCode opcode = 1;
-    public static final int OPCODE_FIELD_NUMBER = 1;
-    private com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode opcode_;
-    public boolean hasOpcode() {
+    // required .otsp.ControlManagement.Type type = 1;
+    public static final int TYPE_FIELD_NUMBER = 1;
+    private com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type type_;
+    public boolean hasType() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    public com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode getOpcode() {
-      return opcode_;
+    public com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type getType() {
+      return type_;
+    }
+    
+    // optional .otsp.ControlManagement.Code code = 2;
+    public static final int CODE_FIELD_NUMBER = 2;
+    private com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code code_;
+    public boolean hasCode() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    public com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code getCode() {
+      return code_;
     }
     
     private void initFields() {
-      opcode_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode.PING;
+      type_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type.ECHO_REPLY;
+      code_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code.NETWORK_UNREACHABLE;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
       
-      if (!hasOpcode()) {
+      if (!hasType()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -859,7 +955,10 @@ public final class OtspRouting {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeEnum(1, opcode_.getNumber());
+        output.writeEnum(1, type_.getNumber());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeEnum(2, code_.getNumber());
       }
       getUnknownFields().writeTo(output);
     }
@@ -872,7 +971,11 @@ public final class OtspRouting {
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, opcode_.getNumber());
+          .computeEnumSize(1, type_.getNumber());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(2, code_.getNumber());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -998,8 +1101,10 @@ public final class OtspRouting {
       
       public Builder clear() {
         super.clear();
-        opcode_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode.PING;
+        type_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type.ECHO_REPLY;
         bitField0_ = (bitField0_ & ~0x00000001);
+        code_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code.NETWORK_UNREACHABLE;
+        bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
       
@@ -1041,7 +1146,11 @@ public final class OtspRouting {
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
           to_bitField0_ |= 0x00000001;
         }
-        result.opcode_ = opcode_;
+        result.type_ = type_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.code_ = code_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1058,15 +1167,18 @@ public final class OtspRouting {
       
       public Builder mergeFrom(com.tokbox.tumor.proto.OtspRouting.ControlManagement other) {
         if (other == com.tokbox.tumor.proto.OtspRouting.ControlManagement.getDefaultInstance()) return this;
-        if (other.hasOpcode()) {
-          setOpcode(other.getOpcode());
+        if (other.hasType()) {
+          setType(other.getType());
+        }
+        if (other.hasCode()) {
+          setCode(other.getCode());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
       
       public final boolean isInitialized() {
-        if (!hasOpcode()) {
+        if (!hasType()) {
           
           return false;
         }
@@ -1098,12 +1210,23 @@ public final class OtspRouting {
             }
             case 8: {
               int rawValue = input.readEnum();
-              com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode value = com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode.valueOf(rawValue);
+              com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type value = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type.valueOf(rawValue);
               if (value == null) {
                 unknownFields.mergeVarintField(1, rawValue);
               } else {
                 bitField0_ |= 0x00000001;
-                opcode_ = value;
+                type_ = value;
+              }
+              break;
+            }
+            case 16: {
+              int rawValue = input.readEnum();
+              com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code value = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(2, rawValue);
+              } else {
+                bitField0_ |= 0x00000002;
+                code_ = value;
               }
               break;
             }
@@ -1113,26 +1236,50 @@ public final class OtspRouting {
       
       private int bitField0_;
       
-      // required .otsp.ControlManagement.OpCode opcode = 1;
-      private com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode opcode_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode.PING;
-      public boolean hasOpcode() {
+      // required .otsp.ControlManagement.Type type = 1;
+      private com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type type_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type.ECHO_REPLY;
+      public boolean hasType() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      public com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode getOpcode() {
-        return opcode_;
+      public com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type getType() {
+        return type_;
       }
-      public Builder setOpcode(com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode value) {
+      public Builder setType(com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type value) {
         if (value == null) {
           throw new NullPointerException();
         }
         bitField0_ |= 0x00000001;
-        opcode_ = value;
+        type_ = value;
         onChanged();
         return this;
       }
-      public Builder clearOpcode() {
+      public Builder clearType() {
         bitField0_ = (bitField0_ & ~0x00000001);
-        opcode_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.OpCode.PING;
+        type_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Type.ECHO_REPLY;
+        onChanged();
+        return this;
+      }
+      
+      // optional .otsp.ControlManagement.Code code = 2;
+      private com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code code_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code.NETWORK_UNREACHABLE;
+      public boolean hasCode() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      public com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code getCode() {
+        return code_;
+      }
+      public Builder setCode(com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000002;
+        code_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearCode() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        code_ = com.tokbox.tumor.proto.OtspRouting.ControlManagement.Code.NETWORK_UNREACHABLE;
         onChanged();
         return this;
       }
@@ -2218,23 +2365,28 @@ public final class OtspRouting {
       "proto\"\225\001\n\017GroupManagement\022,\n\006opcode\030\001 \002(" +
       "\0162\034.otsp.GroupManagement.OpCode\022(\n\taddre" +
       "sses\030\002 \003(\0132\025.otsp.OtspNodeAddress\"*\n\006OpC" +
-      "ode\022\t\n\005QUERY\020\001\022\n\n\006REPORT\020\002\022\t\n\005LEAVE\020\003\"a\n" +
-      "\021ControlManagement\022.\n\006opcode\030\001 \002(\0162\036.ots" +
-      "p.ControlManagement.OpCode\"\034\n\006OpCode\022\010\n\004" +
-      "PING\020\001\022\010\n\004PONG\020\002\"\242\001\n\024ConnectionManagemen" +
-      "t\0221\n\006opcode\030\001 \002(\0162!.otsp.ConnectionManag" +
-      "ement.OpCode\022\017\n\007dhprime\030\002 \001(\014\022\016\n\006dhbase\030",
-      "\003 \001(\014\022\020\n\010dhpublic\030\004 \001(\014\"$\n\006OpCode\022\013\n\007CON" +
-      "NECT\020\001\022\r\n\tKEEPALIVE\020\002\"1\n\tSignature\022\021\n\tch" +
-      "allenge\030\001 \001(\014\022\021\n\tsignature\030\002 \001(\014:A\n\017grou" +
-      "pManagement\022\021.otsp.OtspMessage\030\n \001(\0132\025.o" +
-      "tsp.GroupManagement:E\n\021controlManagement" +
-      "\022\021.otsp.OtspMessage\030\013 \001(\0132\027.otsp.Control" +
-      "Management:K\n\024connectionManagement\022\021.ots" +
-      "p.OtspMessage\030\014 \001(\0132\032.otsp.ConnectionMan" +
-      "agement:5\n\tsignature\022\021.otsp.OtspMessage\030" +
-      "\r \001(\0132\017.otsp.SignatureB%\n\026com.tokbox.tum",
-      "or.protoB\013OtspRouting"
+      "ode\022\t\n\005QUERY\020\001\022\n\n\006REPORT\020\002\022\t\n\005LEAVE\020\003\"\267\002" +
+      "\n\021ControlManagement\022*\n\004type\030\001 \002(\0162\034.otsp" +
+      ".ControlManagement.Type\022*\n\004code\030\002 \001(\0162\034." +
+      "otsp.ControlManagement.Code\"\\\n\004Type\022\016\n\nE" +
+      "CHO_REPLY\020\000\022\033\n\027DESTINATION_UNREACHABLE\020\003" +
+      "\022\020\n\014ECHO_REQUEST\020\010\022\025\n\021PARAMETER_PROBLEM\020",
+      "\014\"l\n\004Code\022\027\n\023NETWORK_UNREACHABLE\020\036\022\024\n\020NO" +
+      "DE_UNREACHABLE\020\037\022\030\n\024SOURCE_NODE_ISOLATED" +
+      "\020&\022\033\n\027SOURCE_SIGNATURE_FAILED\020{\"\242\001\n\024Conn" +
+      "ectionManagement\0221\n\006opcode\030\001 \002(\0162!.otsp." +
+      "ConnectionManagement.OpCode\022\017\n\007dhprime\030\002" +
+      " \001(\014\022\016\n\006dhbase\030\003 \001(\014\022\020\n\010dhpublic\030\004 \001(\014\"$" +
+      "\n\006OpCode\022\013\n\007CONNECT\020\001\022\r\n\tKEEPALIVE\020\002\"1\n\t" +
+      "Signature\022\021\n\tchallenge\030\001 \001(\014\022\021\n\tsignatur" +
+      "e\030\002 \001(\014:A\n\017groupManagement\022\021.otsp.OtspMe" +
+      "ssage\030\n \001(\0132\025.otsp.GroupManagement:E\n\021co",
+      "ntrolManagement\022\021.otsp.OtspMessage\030\013 \001(\013" +
+      "2\027.otsp.ControlManagement:K\n\024connectionM" +
+      "anagement\022\021.otsp.OtspMessage\030\014 \001(\0132\032.ots" +
+      "p.ConnectionManagement:5\n\tsignature\022\021.ot" +
+      "sp.OtspMessage\030\r \001(\0132\017.otsp.SignatureB%\n" +
+      "\026com.tokbox.tumor.protoB\013OtspRouting"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2254,7 +2406,7 @@ public final class OtspRouting {
           internal_static_otsp_ControlManagement_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_otsp_ControlManagement_descriptor,
-              new java.lang.String[] { "Opcode", },
+              new java.lang.String[] { "Type", "Code", },
               com.tokbox.tumor.proto.OtspRouting.ControlManagement.class,
               com.tokbox.tumor.proto.OtspRouting.ControlManagement.Builder.class);
           internal_static_otsp_ConnectionManagement_descriptor =

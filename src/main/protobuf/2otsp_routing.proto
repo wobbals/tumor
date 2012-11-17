@@ -20,8 +20,20 @@ message GroupManagement {
 }
 
 message ControlManagement {
-  enum OpCode { PING = 1; PONG = 2; }
-  required OpCode opcode = 1;
+  enum Type { 
+    ECHO_REPLY = 0; 
+    DESTINATION_UNREACHABLE = 3;
+    ECHO_REQUEST = 8;
+    PARAMETER_PROBLEM = 12;
+  }
+  enum Code {
+    NETWORK_UNREACHABLE = 30;
+    NODE_UNREACHABLE = 31;
+    SOURCE_NODE_ISOLATED = 38;
+    SOURCE_SIGNATURE_FAILED = 123;
+  }
+  required Type type = 1;
+  optional Code code = 2;
 }
 
 message ConnectionManagement {

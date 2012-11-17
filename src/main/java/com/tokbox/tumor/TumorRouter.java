@@ -3,8 +3,10 @@ package com.tokbox.tumor;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Socket;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
@@ -41,6 +43,7 @@ public class TumorRouter {
 	private ZMQ.Socket requestServiceDealer;
 	private ZMQ.Context context;
 	private int numWorkers;
+	private SendLoop sendLoop;
 
 	public TumorRouter() {
 		this(1);
@@ -58,14 +61,16 @@ public class TumorRouter {
 		requestServiceDealer = context.socket(ZMQ.DEALER);
 		requestServiceDealer.bind("inproc://workers");
 
-		//TODO recycle proto message objects
 		//TODO multicast support (srsly do this first)
 		//TODO strip routing signature from request before forwarding
+		//TODO keep-alive ping
 	}
 
 	public void start() {
 		executor = Executors.newCachedThreadPool();
 		executor.submit(new MainLoop());
+		sendLoop = new SendLoop();
+		executor.submit(sendLoop);
 
 		System.out.printf("creating %d workers\n", numWorkers);
 		replyServiceWorkers = new ZMQ.Socket[numWorkers];
@@ -144,6 +149,11 @@ public class TumorRouter {
 		}
 
 		public void run() {
+			ExtensionRegistry registry = ExtensionRegistry.newInstance();
+			registry.add(OtspRouting.connectionManagement);
+			registry.add(OtspRouting.signature);
+			OtspMessage.Builder builder = OtspMessage.newBuilder();
+			OtspMessage message = null;
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
 					byte[] request;
@@ -152,11 +162,10 @@ public class TumorRouter {
 					//System.out.printf("%d: received %d byte message\n", id, request.length);
 					//  In order to display the 0-terminated string as a String,
 					//  we omit the last byte from request
-					ExtensionRegistry registry = ExtensionRegistry.newInstance();
-					registry.add(OtspRouting.connectionManagement);
-					registry.add(OtspRouting.signature);
-					OtspMessage message = OtspMessage.parseFrom(ByteString.copyFrom(request, 0, request.length - 1), registry);
-
+					
+					//OtspMessage message = OtspMessage.parseFrom(ByteString.copyFrom(request, 0, request.length - 1), registry);
+					message = builder.clear().mergeFrom(ByteString.copyFrom(request, 0, request.length - 1), registry).build();
+					
 					byte[] responseData = null;
 
 					if (message.hasFrom() && message.hasTo()) {
@@ -185,17 +194,37 @@ public class TumorRouter {
 			}
 			workerSocket.close();
 		}
-
 	}
-
-	public static void main( String[] args ) throws InvalidProtocolBufferException
-	{
-		int numProcessors = Runtime.getRuntime().availableProcessors();
-		if (args.length > 0) {
-			numProcessors = Integer.parseInt(args[0]);
+	
+	private class SendLoop implements Runnable {
+		private class BufferPair {
+			byte[] envelope; byte[] message;
+			private BufferPair(byte[] envelope, byte[] message) { this.envelope = envelope; this.message = message; }
 		}
-		TumorRouter server = new TumorRouter(numProcessors);
-		server.start();
+		private LinkedBlockingQueue<BufferPair> sendQueue = new LinkedBlockingQueue<BufferPair>();
+		public boolean send(byte[] envelope, byte[] message) {
+			try {
+				sendQueue.put(new BufferPair(envelope, message));
+				return true;
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return false;
+			}
+		}
+
+		public void run() {
+			while (!Thread.currentThread().isInterrupted()) {
+				try {
+					BufferPair buffers = sendQueue.take();
+					publishService.send(buffers.envelope, ZMQ.SNDMORE);
+					publishService.send(buffers.message, 0);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	public byte[] handleNamedMessage(byte[] request, OtspMessage message) {
@@ -211,33 +240,37 @@ public class TumorRouter {
 			return null; //TODO error
 		}
 
+		OtspMessage.Builder responseMessage = OtspMessage.newBuilder()
+				.setFrom(getBoundNetworkNodeAddress())
+				.setTo(messageFrom.getOtspNodeAddress())
+				.setId(message.getId());
+		
 		if (!getMyNetworkAddressLong().equals((messageTo.getBindAddress() << 32))) {
 			//TODO forward to gateway router
 			System.out.println("dumping packet: no route to node");
-			return null; //control message: no route to host
+			OtspRouting.ControlManagement controlMessage = OtspRouting.ControlManagement.newBuilder()
+					.setType(OtspRouting.ControlManagement.Type.DESTINATION_UNREACHABLE)
+					.setCode(OtspRouting.ControlManagement.Code.NODE_UNREACHABLE).build();
+			responseMessage.setExtension(OtspRouting.controlManagement, controlMessage);
+			return responseMessage.build().toByteArray();
 		}
 
 		if (!EncryptionService.checkMessageSignature(message, messageFrom)) {
 			System.out.println("dumping packet: invalid signature");
-			return null;
+			OtspRouting.ControlManagement controlMessage = OtspRouting.ControlManagement.newBuilder()
+					.setType(OtspRouting.ControlManagement.Type.PARAMETER_PROBLEM)
+					.setCode(OtspRouting.ControlManagement.Code.SOURCE_SIGNATURE_FAILED).build();
+			responseMessage.setExtension(OtspRouting.controlManagement, controlMessage);
+			return responseMessage.build().toByteArray();
 		}
 
 		ByteBuffer destinationEnvelopeBuffer = ByteBuffer.allocate(messageTo.getNetworkId().length+1);
 		destinationEnvelopeBuffer.put(messageTo.getNetworkId());
 		destinationEnvelopeBuffer.put((byte) 0);
 		
-		synchronized(publishService) {
-			publishService.send(destinationEnvelopeBuffer.array(), ZMQ.SNDMORE);
-			publishService.send(EncryptionService.encrypt(request, messageTo), 0);
-		}
-		
-		OtspMessage responseMessage = OtspMessage.newBuilder()
-				.setFrom(getBoundNetworkNodeAddress())
-				.setTo(messageFrom.getOtspNodeAddress())
-				.setId(message.getId())
-				.build();
+		sendLoop.send(destinationEnvelopeBuffer.array(), EncryptionService.encrypt(request, messageTo));
 
-		return responseMessage.toByteArray();
+		return responseMessage.build().toByteArray();
 	}
 
 	public byte[] handleRouterMessage(OtspMessage message) {
@@ -278,6 +311,16 @@ public class TumorRouter {
 				.setAddress(ByteString.copyFrom(addressBuffer.array()))
 				.build();
 		return address;
+	}
+
+	public static void main( String[] args ) throws InvalidProtocolBufferException
+	{
+		int numProcessors = Runtime.getRuntime().availableProcessors() * 2;
+		if (args.length > 0) {
+			numProcessors = Integer.parseInt(args[0]);
+		}
+		TumorRouter server = new TumorRouter(numProcessors);
+		server.start();
 	}
 
 }
