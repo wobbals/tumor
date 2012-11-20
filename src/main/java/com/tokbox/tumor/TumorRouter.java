@@ -1,5 +1,7 @@
 package com.tokbox.tumor;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,6 +47,8 @@ public class TumorRouter {
 	private ZMQ.Context context;
 	private int numWorkers;
 	private SendLoop sendLoop;
+	private InetAddress bindAddress;
+	private Long myBindAddressLong;
 	
 	private static ExtensionRegistry registry;
 	static {
@@ -54,19 +58,22 @@ public class TumorRouter {
 		registry.add(OtspRouting.signature);
 	}
 
-	public TumorRouter() {
-		this(1);
-	}
-
-	public TumorRouter(int numWorkers) {
+	public TumorRouter(int numWorkers, String bindAddressString) throws UnknownHostException {
+		this.bindAddress = InetAddress.getByName(bindAddressString);
+		ByteBuffer addressBuffer = ByteBuffer.allocate(8);
+		addressBuffer.put(bindAddress.getAddress());
+		addressBuffer.putInt(0);
+		addressBuffer.flip();
+		myBindAddressLong = addressBuffer.getLong();
+		System.out.println("bind address="+bindAddress.getHostAddress());
 		this.numWorkers = numWorkers;
 		//  Prepare our context and socket
 		context = ZMQ.context(1);
 		publishService = context.socket(ZMQ.PUB);
-		publishService.bind("tcp://*:5556");
+		publishService.bind(String.format("tcp://%s:5556", bindAddress.getHostAddress()));
 
 		requestServiceRouter = context.socket(ZMQ.ROUTER);
-		requestServiceRouter.bind("tcp://*:5555");
+		requestServiceRouter.bind(String.format("tcp://%s:5555", bindAddress.getHostAddress()));
 		requestServiceDealer = context.socket(ZMQ.DEALER);
 		requestServiceDealer.bind("inproc://workers");
 
@@ -254,9 +261,11 @@ public class TumorRouter {
 				.setTo(messageFrom.getOtspNodeAddress())
 				.setId(message.getId());
 		
-		if (!getMyNetworkAddressLong().equals((messageTo.getBindAddress() << 32))) {
+		if (!getMyBindAddressLong().equals((messageTo.getBindAddress() << 32))) {
 			//TODO forward to gateway router
-			System.out.println("dumping packet: no route to node");
+			System.out.printf("dumping packet: no route to node (src=%s dst=%s\n", 
+					NodeInfo.longToOctets(getMyBindAddressLong()), 
+					NodeInfo.longToOctets(messageTo.getBindAddress()));
 			OtspRouting.ControlManagement controlMessage = OtspRouting.ControlManagement.newBuilder()
 					.setType(OtspRouting.ControlManagement.Type.DESTINATION_UNREACHABLE)
 					.setCode(OtspRouting.ControlManagement.Code.NODE_UNREACHABLE).build();
@@ -306,7 +315,7 @@ public class TumorRouter {
 		OtspRouting.ConnectionManagement connectionManagementMessage = message.getExtension(OtspRouting.connectionManagement);
 		DHExchangeGroup requestGroup = DHExchangeGroup.fromConnectionManagementMessage(connectionManagementMessage);
 		DHExchangeGroup responseGroup = DHExchangeGroup.generateResponse(requestGroup);
-		NodeInfo client = ClientPool.allocateNewClient();
+		NodeInfo client = ClientPool.allocateNewClient(getMyBindAddressLong());
 		client.setSharedSecret(responseGroup.getSharedSecret());
 		System.out.println("Setting up new client poolsize=" + ClientPool.getOccupiedCount());
 
@@ -319,28 +328,31 @@ public class TumorRouter {
 		return response.toByteArray();
 	}
 
-	private static Long getMyNetworkAddressLong() {
-		return 9151314447111815168L;
+	private Long getMyBindAddressLong() {
+		return myBindAddressLong;
 	}
 
-	private static OtspNodeAddress getBoundNetworkNodeAddress() {
-		long localhostRouterAddress = 9151314447111815168L; //127.0.0.1.0.0.0.0
+	private OtspNodeAddress getBoundNetworkNodeAddress() {
 		ByteBuffer addressBuffer = ByteBuffer.allocate(8);
-		addressBuffer.putLong(localhostRouterAddress);
+		addressBuffer.putLong(getMyBindAddressLong());
 		OtspNodeAddress address = OtspNodeAddress.newBuilder()
 				.setAddress(ByteString.copyFrom(addressBuffer.array()))
 				.build();
 		return address;
 	}
 
-	public static void main( String[] args ) throws InvalidProtocolBufferException
+	public static void main( String[] args ) throws InvalidProtocolBufferException, UnknownHostException
 	{
 		PrimeCache.getPrime();
 		int numProcessors = Runtime.getRuntime().availableProcessors() * 2;
 		if (args.length > 0) {
 			numProcessors = Integer.parseInt(args[0]);
 		}
-		TumorRouter server = new TumorRouter(numProcessors);
+		String bindAddress = "127.0.0.1";
+		if (args.length > 1) {
+			bindAddress = args[1];
+		}
+		TumorRouter server = new TumorRouter(numProcessors, bindAddress);
 		server.start();
 	}
 

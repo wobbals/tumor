@@ -16,10 +16,10 @@ public class ClientPool {
 		scheduledExecutor.scheduleWithFixedDelay(new TimeoutEvictionRunner(), 1, 300, TimeUnit.SECONDS);
 	}
 
-	public static NodeInfo allocateNewClient() {
-		Long clientNetworkAddress = generateRandomNetworkAddress();
+	public static NodeInfo allocateNewClient(Long routerAddressLong) {
+		Long clientNetworkAddress = generateRandomNetworkAddress(routerAddressLong);
 		while (clients.containsKey(clientNetworkAddress)) {
-			clientNetworkAddress = generateRandomNetworkAddress();
+			clientNetworkAddress = generateRandomNetworkAddress(routerAddressLong);
 		}
 		NodeInfo newClient = new NodeInfo(clientNetworkAddress);
 		clients.put(newClient.getNetworkIdLong(), newClient);
@@ -45,11 +45,10 @@ public class ClientPool {
 		return info;
 	}
 
-	private static Long generateRandomNetworkAddress() {
+	private static Long generateRandomNetworkAddress(Long routerAddressLong) {
 		Integer clientSerial = (int) (Math.random() * (double)Integer.MAX_VALUE);
-		Integer bindAddress = 0x7F000001; 
-		Long clientNetworkAddress = (long) bindAddress;
-		clientNetworkAddress <<= 32;
+		Long clientNetworkAddress = 0L;
+		clientNetworkAddress |= routerAddressLong;
 		clientNetworkAddress |= clientSerial;
 		return clientNetworkAddress;
 	}
