@@ -6,16 +6,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.zeromq.ZMQ;
-import org.zeromq.ZMQ.Socket;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.tokbox.tumor.proto.OtspCore.OtspMessage;
 import com.tokbox.tumor.proto.OtspCore.OtspNodeAddress;
+import com.tokbox.tumor.proto.OtspRouting.ConnectionManagement;
 import com.tokbox.tumor.proto.OtspRouting;
 import com.tokbox.tumor.security.DHExchangeGroup;
 import com.tokbox.tumor.security.EncryptionService;
+import com.tokbox.tumor.security.PrimeCache;
 
 /**
  * Some thoughts.
@@ -44,6 +45,13 @@ public class TumorRouter {
 	private ZMQ.Context context;
 	private int numWorkers;
 	private SendLoop sendLoop;
+	
+	private static ExtensionRegistry registry;
+	static {
+		registry = ExtensionRegistry.newInstance();
+		registry.add(OtspRouting.connectionManagement);
+		registry.add(OtspRouting.signature);
+	}
 
 	public TumorRouter() {
 		this(1);
@@ -149,9 +157,6 @@ public class TumorRouter {
 		}
 
 		public void run() {
-			ExtensionRegistry registry = ExtensionRegistry.newInstance();
-			registry.add(OtspRouting.connectionManagement);
-			registry.add(OtspRouting.signature);
 			OtspMessage.Builder builder = OtspMessage.newBuilder();
 			OtspMessage message = null;
 			while (!Thread.currentThread().isInterrupted()) {
@@ -170,15 +175,13 @@ public class TumorRouter {
 
 					if (message.hasFrom() && message.hasTo()) {
 						responseData = handleNamedMessage(request, message);
-					} else if (message.hasTo()) {
-						responseData = handleRouterMessage(message);
 					} else {
 						responseData = handleAnonymousMessage(message);
 					}
 
 					if (null == responseData) {
 						responseData = new byte[1];
-						responseData[0] = 1;
+						responseData[0] = 0x00;
 					}
 
 					ByteBuffer responseBuffer = ByteBuffer.allocate(responseData.length + 1);
@@ -228,6 +231,9 @@ public class TumorRouter {
 	}
 
 	public byte[] handleNamedMessage(byte[] request, OtspMessage message) {
+		if (message.hasExtension(OtspRouting.connectionManagement)) {
+			return handleRouterMessage(message);
+		}
 		OtspNodeAddress fromNodeAddress = message.getFrom();
 		OtspNodeAddress toNodeAddress = message.getTo();
 		if (!fromNodeAddress.hasAddress() || !toNodeAddress.hasAddress()) {
@@ -274,7 +280,13 @@ public class TumorRouter {
 	}
 
 	public byte[] handleRouterMessage(OtspMessage message) {
-		// TODO Auto-generated method stub
+		OtspNodeAddress fromAddress = message.getFrom();
+		if (message.hasExtension(OtspRouting.connectionManagement)) {
+			OtspRouting.ConnectionManagement connectionMessage = message.getExtension(OtspRouting.connectionManagement);
+			if (connectionMessage.getOpcode().equals(ConnectionManagement.OpCode.BYE) && null != fromAddress) {
+				ClientPool.evictNode(fromAddress.getAddress().asReadOnlyByteBuffer().getLong());
+			}
+		}
 		return null;
 	}
 
@@ -288,7 +300,7 @@ public class TumorRouter {
 		DHExchangeGroup responseGroup = DHExchangeGroup.generateResponse(requestGroup);
 		NodeInfo client = ClientPool.allocateNewClient();
 		client.setSharedSecret(responseGroup.getSharedSecret());
-		System.out.println("Setting up new client");
+		System.out.println("Setting up new client poolsize=" + ClientPool.getOccupiedCount());
 
 		OtspMessage response = OtspMessage.newBuilder()
 				.setFrom(getBoundNetworkNodeAddress())
@@ -315,6 +327,7 @@ public class TumorRouter {
 
 	public static void main( String[] args ) throws InvalidProtocolBufferException
 	{
+		PrimeCache.getPrime();
 		int numProcessors = Runtime.getRuntime().availableProcessors() * 2;
 		if (args.length > 0) {
 			numProcessors = Integer.parseInt(args[0]);

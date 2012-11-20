@@ -1346,10 +1346,12 @@ public final class OtspRouting {
         implements com.google.protobuf.ProtocolMessageEnum {
       CONNECT(0, 1),
       KEEPALIVE(1, 2),
+      BYE(2, 3),
       ;
       
       public static final int CONNECT_VALUE = 1;
       public static final int KEEPALIVE_VALUE = 2;
+      public static final int BYE_VALUE = 3;
       
       
       public final int getNumber() { return value; }
@@ -1358,6 +1360,7 @@ public final class OtspRouting {
         switch (value) {
           case 1: return CONNECT;
           case 2: return KEEPALIVE;
+          case 3: return BYE;
           default: return null;
         }
       }
@@ -1388,7 +1391,7 @@ public final class OtspRouting {
       }
       
       private static final OpCode[] VALUES = {
-        CONNECT, KEEPALIVE, 
+        CONNECT, KEEPALIVE, BYE, 
       };
       
       public static OpCode valueOf(
@@ -2373,20 +2376,21 @@ public final class OtspRouting {
       "\022\020\n\014ECHO_REQUEST\020\010\022\025\n\021PARAMETER_PROBLEM\020",
       "\014\"l\n\004Code\022\027\n\023NETWORK_UNREACHABLE\020\036\022\024\n\020NO" +
       "DE_UNREACHABLE\020\037\022\030\n\024SOURCE_NODE_ISOLATED" +
-      "\020&\022\033\n\027SOURCE_SIGNATURE_FAILED\020{\"\242\001\n\024Conn" +
+      "\020&\022\033\n\027SOURCE_SIGNATURE_FAILED\020{\"\253\001\n\024Conn" +
       "ectionManagement\0221\n\006opcode\030\001 \002(\0162!.otsp." +
       "ConnectionManagement.OpCode\022\017\n\007dhprime\030\002" +
-      " \001(\014\022\016\n\006dhbase\030\003 \001(\014\022\020\n\010dhpublic\030\004 \001(\014\"$" +
-      "\n\006OpCode\022\013\n\007CONNECT\020\001\022\r\n\tKEEPALIVE\020\002\"1\n\t" +
-      "Signature\022\021\n\tchallenge\030\001 \001(\014\022\021\n\tsignatur" +
-      "e\030\002 \001(\014:A\n\017groupManagement\022\021.otsp.OtspMe" +
-      "ssage\030\n \001(\0132\025.otsp.GroupManagement:E\n\021co",
-      "ntrolManagement\022\021.otsp.OtspMessage\030\013 \001(\013" +
-      "2\027.otsp.ControlManagement:K\n\024connectionM" +
-      "anagement\022\021.otsp.OtspMessage\030\014 \001(\0132\032.ots" +
-      "p.ConnectionManagement:5\n\tsignature\022\021.ot" +
-      "sp.OtspMessage\030\r \001(\0132\017.otsp.SignatureB%\n" +
-      "\026com.tokbox.tumor.protoB\013OtspRouting"
+      " \001(\014\022\016\n\006dhbase\030\003 \001(\014\022\020\n\010dhpublic\030\004 \001(\014\"-" +
+      "\n\006OpCode\022\013\n\007CONNECT\020\001\022\r\n\tKEEPALIVE\020\002\022\007\n\003" +
+      "BYE\020\003\"1\n\tSignature\022\021\n\tchallenge\030\001 \001(\014\022\021\n" +
+      "\tsignature\030\002 \001(\014:A\n\017groupManagement\022\021.ot" +
+      "sp.OtspMessage\030\n \001(\0132\025.otsp.GroupManagem",
+      "ent:E\n\021controlManagement\022\021.otsp.OtspMess" +
+      "age\030\013 \001(\0132\027.otsp.ControlManagement:K\n\024co" +
+      "nnectionManagement\022\021.otsp.OtspMessage\030\014 " +
+      "\001(\0132\032.otsp.ConnectionManagement:5\n\tsigna" +
+      "ture\022\021.otsp.OtspMessage\030\r \001(\0132\017.otsp.Sig" +
+      "natureB%\n\026com.tokbox.tumor.protoB\013OtspRo" +
+      "uting"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

@@ -11,14 +11,19 @@ public class DHExchangeGroup {
 	private static final int PRIME_WIDTH = 1024;
 	private static final int BASE_WIDTH = 1024;
 	private static final int SECRET_WIDTH = 1024;
+	private static final BigInteger myP = PrimeCache.getPrime();
+	private static final BigInteger myG = PrimeCache.getPrime();
 	
 	public static DHExchangeGroup generateHandshake() {
 		SecureRandom myRandom = new SecureRandom();
 
 		DHExchangeGroup group = new DHExchangeGroup();
-		BigInteger p = BigInteger.probablePrime(PRIME_WIDTH, myRandom);
-		BigInteger g = BigInteger.probablePrime(BASE_WIDTH, myRandom);
-		BigInteger secret = BigInteger.probablePrime(SECRET_WIDTH, myRandom);
+//		BigInteger p = BigInteger.probablePrime(PRIME_WIDTH, myRandom);
+//		BigInteger g = BigInteger.probablePrime(BASE_WIDTH, myRandom);
+//		BigInteger secret = BigInteger.probablePrime(SECRET_WIDTH, myRandom);
+		BigInteger p = myP;
+		BigInteger g = myG;
+		BigInteger secret = PrimeCache.getPrime();
 		group.setP(p);
 		group.setG(g);
 		group.setSecret(secret);
@@ -30,8 +35,9 @@ public class DHExchangeGroup {
 	public static DHExchangeGroup generateResponse(DHExchangeGroup exchangeGroup) {
 		BigInteger p = exchangeGroup.getP();
 		BigInteger g = exchangeGroup.getG();
-		SecureRandom myRandom = new SecureRandom();
-		BigInteger secret = BigInteger.probablePrime(SECRET_WIDTH, myRandom);
+//		SecureRandom myRandom = new SecureRandom();
+//		BigInteger secret = BigInteger.probablePrime(SECRET_WIDTH, myRandom);
+		BigInteger secret = PrimeCache.getPrime();
 		BigInteger responseQ = g.modPow(secret, p);
 		BigInteger sharedSecret = exchangeGroup.getQ().modPow(secret, p);
 		DHExchangeGroup responseGroup = new DHExchangeGroup();

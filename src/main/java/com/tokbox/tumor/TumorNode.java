@@ -1,11 +1,11 @@
 package com.tokbox.tumor;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -15,7 +15,6 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.tokbox.tumor.proto.OtspCore.OtspMessage;
-import com.tokbox.tumor.proto.OtspCore.OtspNodeAddress;
 import com.tokbox.tumor.proto.OtspRouting;
 import com.tokbox.tumor.proto.OtspRouting.ConnectionManagement;
 import com.tokbox.tumor.security.DHExchangeGroup;
@@ -34,13 +33,36 @@ import com.tokbox.tumor.security.EncryptionService;
 public class TumorNode {
 	private static ZMQ.Context context = ZMQ.context(1);
 
+	private static ExtensionRegistry registry;
+	static {
+		registry = ExtensionRegistry.newInstance();
+		registry.add(OtspRouting.connectionManagement);
+	}
+	
 	private ZMQ.Socket sender;
 	private ZMQ.Socket receiver;
 	private NodeInfo nodeInfo;
-	@SuppressWarnings("unused") private NodeInfo routerInfo;
+	private NodeInfo routerInfo;
 	private ExecutorService executor;
 	private AtomicInteger routableMessageSeqno;
-
+	private Listener listener;
+	private ListenerDelegate listenerDelegate = new ListenerDelegate();
+	
+	public static interface Listener {
+		public void onMessageReceived(OtspMessage message);
+	}
+	
+	private class ListenerDelegate {
+		public void signalMessageReceived(final OtspMessage message) {
+			final Listener myListener = getListener();
+			if (null == myListener) return;
+			executor.submit(new Runnable() {
+				public void run() {
+					myListener.onMessageReceived(message);
+				}});
+		}
+	}
+	
 	public TumorNode() throws InvalidProtocolBufferException {
 		routableMessageSeqno = new AtomicInteger(1);
 
@@ -68,8 +90,6 @@ public class TumorNode {
 
 		//  Get the reply.
 		byte[] reply = sender.recv(0);
-		ExtensionRegistry registry = ExtensionRegistry.newInstance();
-		registry.add(OtspRouting.connectionManagement);
 		OtspMessage response = OtspMessage.parseFrom(ByteString.copyFrom(reply, 0, reply.length - 1), registry);
 		//System.out.println("Received D-H response");
 
@@ -97,35 +117,78 @@ public class TumorNode {
 		if (null != executor && !executor.isShutdown()) {
 			executor.shutdown();
 		}
-		executor = Executors.newCachedThreadPool();
+//		executor = Executors.newCachedThreadPool();
+		executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 		executor.submit(new SubscribeLoop());
-		executor.submit(new SendLoop());
+		//executor.submit(new SendLoop());
 	}
 
 	public void stop() {
+		OtspRouting.ConnectionManagement bye = OtspRouting.ConnectionManagement.newBuilder()
+				.setOpcode(OtspRouting.ConnectionManagement.OpCode.BYE).build();
+		OtspMessage.Builder messageBuilder = OtspMessage.newBuilder()
+				.setFrom(getNodeInfo().getOtspNodeAddress())
+				.setTo(getRouterInfo().getOtspNodeAddress())
+				.setExtension(OtspRouting.connectionManagement, bye);
+		try {
+			this.sendMessage(messageBuilder).get();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
 		executor.shutdownNow();
+		
+		//TODO do I need to disconnect too?
+		sender.close();
+		receiver.close();
 	}
 
-	public void sendRoutableMessage(OtspMessage.Builder messageBuilder) {
+	public Future<OtspMessage> sendMessage(OtspMessage.Builder messageBuilder) {
 		if (!messageBuilder.hasId()) {
 			messageBuilder.setId(routableMessageSeqno.incrementAndGet());
 		}
+		messageBuilder.setFrom(getNodeInfo().getOtspNodeAddress());
 		EncryptionService.signMessage(messageBuilder, nodeInfo);
 		byte[] messageData = messageBuilder.build().toByteArray();
 		ByteBuffer sendBuffer = ByteBuffer.allocate(messageData.length+1);
 		sendBuffer.put(messageData);
 		sendBuffer.put((byte) 0);
 
-		try {
-			sendQueue.put(sendBuffer.array());
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		try {
+//			sendQueue.put(sendBuffer.array());
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		return null;
+		return executor.submit(new SendTask(sendBuffer.array()));
+		
 	}
 
+	private class SendTask implements Callable<OtspMessage> {
+		private byte[] message;
+		public SendTask(byte[] message) {
+			this.message = message;
+		}
+		public OtspMessage call() throws Exception {
+			synchronized(sendQueue) { //TODO make real lock if we keep this approach
+				sender.send(message, 0);
+				byte[] responseBytes = sender.recv(0);
+				while (sender.hasReceiveMore()) {
+					System.out.println("shit is weird");
+					sender.recv(0);
+				}
+				try {
+					return OtspMessage.parseFrom(responseBytes, registry);
+				} catch (InvalidProtocolBufferException ipbe) {
+					return null;
+				}
+			}
+		}
+	}
+	
 	private LinkedBlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<byte[]>();
-
 	private class SendLoop implements Runnable {
 
 		public void run() {
@@ -165,14 +228,11 @@ public class TumorNode {
 						//System.out.println(Thread.currentThread().getName() + ": incoming message length: "+incomingMessage.length);
 						incomingMessage = EncryptionService.decrypt(nodeInfo, incomingMessage, 0, incomingMessage.length - 1);
 
-						OtspMessage routeTestResponseMessage;
-						routeTestResponseMessage = OtspMessage.parseFrom(ByteString.copyFrom(incomingMessage, 0, incomingMessage.length-1));
-
-						//System.out.println("received subscribe message: "+routeTestResponseMessage.toString());
-						routableMessagesReceived.incrementAndGet();
-						synchronized(messageIdsIn) {
-							messageIdsIn.add(routeTestResponseMessage.getId());
-						}
+						OtspMessage otspResponseMessage;
+						otspResponseMessage = OtspMessage.parseFrom(ByteString.copyFrom(incomingMessage, 0, incomingMessage.length-1));
+						
+						listenerDelegate.signalMessageReceived(otspResponseMessage);
+						
 					}
 
 				} catch (Exception e) {
@@ -184,95 +244,20 @@ public class TumorNode {
 		}
 	}
 
-	private static AtomicInteger routableMessagesReceived = new AtomicInteger(0);
-	private static Set<Integer> messageIdsIn = new HashSet<Integer>();
-	private static Set<Integer> messageIdsOut = new HashSet<Integer>();
-
-	public static void main(String[] args) throws InvalidProtocolBufferException, InterruptedException {
-		messageIdsIn = (Set<Integer>) Collections.synchronizedSet(messageIdsIn);
-		messageIdsOut = (Set<Integer>) Collections.synchronizedSet(messageIdsOut);
-
-		int numClients = 10;
-		if (args.length > 0) {
-			numClients = Integer.parseInt(args[0]);
-		}
-		int numMessages = 100000;
-		if (args.length > 1) {
-			numMessages = Integer.parseInt(args[1]);
-		}
-
-		System.out.printf("using %d clients to send %d messages\n", numClients, numMessages);
-		final TumorNode[] clients = new TumorNode[numClients];
-		long startClientInit = System.currentTimeMillis();
-		for (int i = 0; i < clients.length; i++) {
-			clients[i] = new TumorNode();
-			clients[i].start();
-		}
-		long clientInitTime = System.currentTimeMillis() - startClientInit;
-		System.out.printf("initialized %d clients in %d ms (avg=%.2f ms/c)\n", numClients, clientInitTime, (double)((double)clientInitTime/(double)numClients));
-
-		long messageSendStart = System.currentTimeMillis();
-		for (int i = 0; i < numMessages; i++) {
-			final int messageId = i;
-			messageIdsOut.add(messageId);
-
-			TumorNode firstClient = clients[(int)(Math.random() * (double)clients.length)];
-			TumorNode secondClient = clients[(int)(Math.random() * (double)clients.length)];
-			//System.out.printf("messageId=%d from=%s to=%s \n",messageId, firstClient.myNode.getNetworkIdOctets(), secondClient.myNode.getNetworkIdOctets());
-			OtspNodeAddress firstNodeAddress = firstClient.nodeInfo.getOtspNodeAddress();
-			OtspNodeAddress secondNodeAddress = secondClient.nodeInfo.getOtspNodeAddress();
-
-			OtspMessage.Builder testMessage = OtspMessage.newBuilder()
-					.setTo(secondNodeAddress)
-					.setFrom(firstNodeAddress)
-					.setId(messageId);
-
-			firstClient.sendRoutableMessage(testMessage);
-
-		}
-		long messageSendTime = System.currentTimeMillis() - messageSendStart;
-		System.out.printf("queued %d message sends in %d ms (avg=%.2f m/ms)\n", numMessages, messageSendTime, (double)((double)numMessages / (double)messageSendTime));
-
-		messageSendTime = System.currentTimeMillis() - messageSendStart;
-		System.out.printf("sent %d messages in %d ms (avg=%.2f m/ms)\n", messageIdsOut.size(), messageSendTime, (double)((double)messageIdsOut.size() / (double)messageSendTime));
-
-		while (messageIdsIn.size() < messageIdsOut.size()) {
-			Thread.sleep(10);
-//			System.out.println("messagesIn.size="+messageIdsIn.size());
-//			System.out.println("messagesOut.size="+messageIdsOut.size());
-//			System.out.println("routableMessagesReceived="+routableMessagesReceived.intValue());
-		}
-		
-		messageSendTime = System.currentTimeMillis() - messageSendStart;
-		System.out.printf("message distribution completed in %d ms (avg=%.2f m/ms)\n", messageSendTime, (double)((double)messageIdsOut.size() / (double)messageSendTime));
-
-		
-		System.out.println("messagesIn.size="+messageIdsIn.size());
-		System.out.println("messagesOut.size="+messageIdsOut.size());
-		System.out.println("routableMessagesReceived="+routableMessagesReceived.intValue());
-		synchronized(messageIdsIn) {
-			synchronized(messageIdsOut) {
-				for (Integer id : messageIdsOut) {
-					if (!messageIdsIn.contains(id)) {
-						System.out.println("message integrity is questionable lookup "+id);
-					} else {
-						messageIdsIn.remove(id);
-					}
-				}
-			}
-		}
-		if (messageIdsIn.isEmpty()) {
-			System.out.println("all messages accounted for");
-		} else {
-			System.out.println("orphaned messages detected");
-		}
-
-		for (TumorNode client : clients) {
-			client.stop();
-		}
-
-		System.out.println("exiting");
-		
+	public NodeInfo getNodeInfo() {
+		return this.nodeInfo;
 	}
 
+	public Listener getListener() {
+		return listener;
+	}
+
+	public void setListener(Listener listener) {
+		this.listener = listener;
+	}
+
+	public NodeInfo getRouterInfo() {
+		return routerInfo;
+	}
+	
 }
