@@ -50,6 +50,7 @@ public class TumorRouter {
 	static {
 		registry = ExtensionRegistry.newInstance();
 		registry.add(OtspRouting.connectionManagement);
+		registry.add(OtspRouting.groupManagement);
 		registry.add(OtspRouting.signature);
 	}
 
@@ -69,7 +70,9 @@ public class TumorRouter {
 		requestServiceDealer = context.socket(ZMQ.DEALER);
 		requestServiceDealer.bind("inproc://workers");
 
-		//TODO multicast support (srsly do this first)
+		//TODO gateway support
+		//TODO broadcast support (especially all connected children nodes)
+		//TODO multicast support
 		//TODO strip routing signature from request before forwarding
 		//TODO keep-alive ping
 	}
@@ -230,7 +233,7 @@ public class TumorRouter {
 		}
 	}
 
-	public byte[] handleNamedMessage(byte[] request, OtspMessage message) {
+	private byte[] handleNamedMessage(byte[] request, OtspMessage message) {
 		if (message.hasExtension(OtspRouting.connectionManagement)) {
 			return handleRouterMessage(message);
 		}
@@ -279,18 +282,23 @@ public class TumorRouter {
 		return responseMessage.build().toByteArray();
 	}
 
-	public byte[] handleRouterMessage(OtspMessage message) {
+	private byte[] handleRouterMessage(OtspMessage message) {
 		OtspNodeAddress fromAddress = message.getFrom();
 		if (message.hasExtension(OtspRouting.connectionManagement)) {
+			//If the message had addressing, this is probably a disconnect. In fact, that's the only thing we know how to do.
 			OtspRouting.ConnectionManagement connectionMessage = message.getExtension(OtspRouting.connectionManagement);
 			if (connectionMessage.getOpcode().equals(ConnectionManagement.OpCode.BYE) && null != fromAddress) {
 				ClientPool.evictNode(fromAddress.getAddress().asReadOnlyByteBuffer().getLong());
 			}
+		} else if (message.hasExtension(OtspRouting.groupManagement)) {
+			OtspRouting.GroupManagement groupManagementMessage = message.getExtension(OtspRouting.groupManagement);
+			//see MulticastService
 		}
+		
 		return null;
 	}
 
-	public byte[] handleAnonymousMessage(OtspMessage message) {
+	private byte[] handleAnonymousMessage(OtspMessage message) {
 		if (!message.hasExtension(OtspRouting.connectionManagement)) {
 			return null; // TODO: error
 		}
