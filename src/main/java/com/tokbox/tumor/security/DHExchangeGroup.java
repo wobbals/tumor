@@ -15,7 +15,7 @@ public class DHExchangeGroup {
 	private static final BigInteger myG = PrimeCache.getPrime();
 	
 	public static DHExchangeGroup generateHandshake() {
-		SecureRandom myRandom = new SecureRandom();
+//		SecureRandom myRandom = new SecureRandom();
 
 		DHExchangeGroup group = new DHExchangeGroup();
 //		BigInteger p = BigInteger.probablePrime(PRIME_WIDTH, myRandom);

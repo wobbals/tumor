@@ -48,14 +48,14 @@ public class NodeTest
     
     public void testUnicastBenchmarkConcurrent() throws InterruptedException, ExecutionException
     {
-    	int numConcurrent = 3;
-    	ScheduledExecutorService executor = Executors.newScheduledThreadPool(numConcurrent+1);
+    	int numConcurrent = 4;
+    	ScheduledExecutorService executor = Executors.newScheduledThreadPool(numConcurrent);
     	Future<?> futures[] = new Future<?>[numConcurrent];
     	for (int i = 0; i < numConcurrent; i++) {
     		futures[i] = executor.schedule(new Runnable() {
     			public void run() {
     				try {
-    					new UnicastBenchmark(8,50000).runUnicastBenchmark();
+    					new UnicastBenchmark(2,20000).runUnicastBenchmark();
     				} catch (InvalidProtocolBufferException e) {
     					// TODO Auto-generated catch block
     					e.printStackTrace();

@@ -70,7 +70,7 @@ public class TumorNode {
 		sender = context.socket(ZMQ.REQ);
 
 		//System.out.println("Connecting to tumor router...");
-		sender.connect("tcp://localhost:5555");
+		sender.connect("tcp://192.168.1.17:5555");
 
 		DHExchangeGroup handshake = DHExchangeGroup.generateHandshake();
 		ConnectionManagement connectionRequest = ConnectionManagement.newBuilder(handshake.toConnectionManagementMessage())
@@ -176,7 +176,6 @@ public class TumorNode {
 				sender.send(message, 0);
 				byte[] responseBytes = sender.recv(0);
 				while (sender.hasReceiveMore()) {
-					System.out.println("shit is weird");
 					sender.recv(0);
 				}
 				try {
@@ -222,7 +221,7 @@ public class TumorNode {
 					if (poller.pollin(pollIndex)) {
 						byte[] incomingMessage = receiver.recv(0);
 
-						//System.out.println(Thread.currentThread().getName() + ": received subscribe envelope: "+RoutableNode.bytesToOctets(incomingMessage, incomingMessage.length - 1));
+						//System.out.println(Thread.currentThread().getName() + ": received subscribe envelope: "+NodeInfo.bytesToOctets(incomingMessage, incomingMessage.length - 1));
 
 						incomingMessage = receiver.recv(0);
 						//System.out.println(Thread.currentThread().getName() + ": incoming message length: "+incomingMessage.length);

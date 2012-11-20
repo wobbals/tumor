@@ -88,7 +88,7 @@ public class NodeInfo {
 		StringBuffer outputString = new StringBuffer();
 		for (int shiftBytes = 7; shiftBytes >= 0 ; shiftBytes--) {
 			long mask = 0x00000000000000FFL;
-			outputString.append(String.format("%d.", (someLong & (long)(mask << shiftBytes*8)) >> (shiftBytes * 8) ));
+			outputString.append(String.format("%d.", (0xFF & (someLong & (long)(mask << shiftBytes*8)) >> (shiftBytes * 8) )));
 		}
 		outputString.deleteCharAt(outputString.length() - 1);
 		return outputString.toString();
