@@ -63,14 +63,14 @@ public class TumorNode {
 		}
 	}
 	
-	public TumorNode() throws InvalidProtocolBufferException {
+	public TumorNode(String routerAddress) throws InvalidProtocolBufferException {
 		routableMessageSeqno = new AtomicInteger(1);
 
 		//  Prepare our context and socket
 		sender = context.socket(ZMQ.REQ);
 
 		//System.out.println("Connecting to tumor router...");
-		sender.connect("tcp://192.168.1.17:5555");
+		sender.connect(String.format("tcp://%s:5555", routerAddress));
 
 		DHExchangeGroup handshake = DHExchangeGroup.generateHandshake();
 		ConnectionManagement connectionRequest = ConnectionManagement.newBuilder(handshake.toConnectionManagementMessage())

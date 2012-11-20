@@ -13,10 +13,13 @@ import com.tokbox.tumor.security.PrimeCache;
 public class UnicastBenchmark {
 	private int numClients;
 	private int numMessages;
+	private String routerAddress;
 
-	public UnicastBenchmark(int numClients, int numMessages) {
+	public UnicastBenchmark(String routerAddress, int numClients, int numMessages) {
 		this.numClients = numClients;
 		this.numMessages = numMessages;
+		this.routerAddress = routerAddress;
+		System.out.println("myRouterAddress="+routerAddress);
 	}
 	
 	private AtomicInteger routableMessagesReceived = new AtomicInteger(0);
@@ -45,7 +48,7 @@ public class UnicastBenchmark {
 		final TumorNode[] clients = new TumorNode[numClients];
 		long startClientInit = System.currentTimeMillis();
 		for (int i = 0; i < clients.length; i++) {
-			clients[i] = new TumorNode();
+			clients[i] = new TumorNode(routerAddress);
 			clients[i].setListener(myNodeListener);
 			clients[i].start();
 		}

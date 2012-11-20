@@ -3,6 +3,8 @@ package com.tokbox.tumor;
 import java.util.HashMap;
 import java.util.TreeSet;
 
+import com.tokbox.tumor.proto.OtspRouting;
+
 /**
  * OTSP routing: group message handling:
  * 
@@ -23,13 +25,17 @@ public class MulticastService {
 	//map MCAST_ADDR --> set NODE_ADDR
 	private HashMap<Long, TreeSet<Long>> multicastDictionary;
 	
-	public synchronized boolean isActiveMulticastAddress(Long multicastAddress) {
+	public boolean isActiveMulticastAddress(Long multicastAddress) {
 		return false;
 	}
 	
-	public synchronized boolean reportReceived(Long nodeAddress, Long multicastAddress) {
+	public boolean reportReceived(Long nodeAddress, Long multicastAddress) {
 		return false;
 	}
 	
-	//we need a broadcast address to spool inbound query from parent
+	public void consumeGroupMessage(OtspRouting.GroupManagementOrBuilder groupMessage) {
+		
+	}
+	
+	//we need a broadcast address in order to spool inbound query from parent
 }
