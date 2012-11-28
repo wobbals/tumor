@@ -14,10 +14,15 @@ import javax.crypto.spec.SecretKeySpec;
 
 import com.google.protobuf.ByteString;
 import com.tokbox.tumor.proto.OtspCore.OtspNodeAddress;
+import com.tokbox.tumor.security.EncryptionService;
 
+/**
+ * Useful info about a node.
+ * @author charley
+ *
+ */
 public class NodeInfo {
 	private static String TRANSPORT_CRYPTO_ALGORITHM = "AES";
-	private static String SECRET_HASH_ALGORITHM = "SHA-256";
 	private Long networkId;
 	private BigInteger sharedSecret;
 	private SecretKeySpec keySpec;
@@ -131,7 +136,7 @@ public class NodeInfo {
 	public void setSharedSecret(BigInteger sharedSecret) {
 		this.sharedSecret = sharedSecret;
 		try {
-			MessageDigest digest = MessageDigest.getInstance(SECRET_HASH_ALGORITHM);
+			MessageDigest digest = MessageDigest.getInstance(EncryptionService.HASH_ALGORITHM);
 			digest.update(sharedSecret.toByteArray());
 			byte[] secretHash = digest.digest();
 

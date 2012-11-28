@@ -77,6 +77,7 @@ public class NodeTest extends TestCase
     	for (Future<?> future : futures) {
     		future.get();
     	}
+    	System.out.println("testUnicastBenchmarkConcurrent complete");
     }
     
     public void testUnicastBenchmarkSerial() {
@@ -91,6 +92,7 @@ public class NodeTest extends TestCase
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+    	System.out.println("testUnicastBenchmarkSerial complete");
     }
     
 }

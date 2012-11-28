@@ -37,6 +37,24 @@ import com.tokbox.tumor.security.PrimeCache;
  * Likely safer to bind a single address per socket for routing, but this needs more consideration.
  * At a minimum, register each address that gets picked up in the bind to the router service.
  *
+ * The layout of the router is thus:
+ * Worker socket pool waits for requests to be forwarded from the round-robin dispatch. (WorkerLoop)
+ * Router-Dealer listens for incoming requests and forwards them to Worker (MainLoop)
+ * Publish service sends outgoing messages FIFO (SendLoop)
+ * 
+ * Gateways & Routing Table
+ * If incoming message is not going to another node connected to this router instance,
+ * the routing table may provide an appropriate egress for the message, otherwise will
+ * return to the client a host-unreachable error. Routing table masks the message destination
+ * against routing table entries, and if a match is found, the message will be forwarded verbatim
+ * to the selected router, over the same request-response service that the message was received
+ * on (albeit over a different socket; the gateway router treats this message as if it came from
+ * one of its own nodes).
+ *
+ * Worker Message Handling
+ * - Named vs Unnamed messages
+ * - Topology service(s)
+ *
  */
 public class TumorRouter {
 	private ExecutorService executor;
@@ -244,6 +262,17 @@ public class TumorRouter {
 		if (message.hasExtension(OtspRouting.connectionManagement)) {
 			return handleRouterMessage(message);
 		}
+		OtspMessage.Topology messageTopology = message.getTopology();
+		if (OtspMessage.Topology.UNICAST.equals(messageTopology)) {
+			return handleUnicastNamedMessage(request, message);
+		} else if (OtspMessage.Topology.BROADCAST.equals(messageTopology)) {
+			return handleBroadcastNamedMessage(request, message);
+		}
+		
+		return null;
+	}
+
+	private byte[] handleUnicastNamedMessage(byte[] request, OtspMessage message) {
 		OtspNodeAddress fromNodeAddress = message.getFrom();
 		OtspNodeAddress toNodeAddress = message.getTo();
 		if (!fromNodeAddress.hasAddress() || !toNodeAddress.hasAddress()) {
@@ -290,6 +319,11 @@ public class TumorRouter {
 
 		return responseMessage.build().toByteArray();
 	}
+	
+	private byte[] handleBroadcastNamedMessage(byte[] request, OtspMessage message) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 	private byte[] handleRouterMessage(OtspMessage message) {
 		OtspNodeAddress fromAddress = message.getFrom();
@@ -302,6 +336,7 @@ public class TumorRouter {
 		} else if (message.hasExtension(OtspRouting.groupManagement)) {
 			OtspRouting.GroupManagement groupManagementMessage = message.getExtension(OtspRouting.groupManagement);
 			//see MulticastService
+			groupManagementMessage.getClass();
 		}
 		
 		return null;

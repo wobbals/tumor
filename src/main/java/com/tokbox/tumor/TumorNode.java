@@ -225,7 +225,7 @@ public class TumorNode {
 
 						incomingMessage = receiver.recv(0);
 						//System.out.println(Thread.currentThread().getName() + ": incoming message length: "+incomingMessage.length);
-						incomingMessage = EncryptionService.decrypt(nodeInfo, incomingMessage, 0, incomingMessage.length - 1);
+						incomingMessage = EncryptionService.decrypt(nodeInfo, incomingMessage);
 
 						OtspMessage otspResponseMessage;
 						otspResponseMessage = OtspMessage.parseFrom(ByteString.copyFrom(incomingMessage, 0, incomingMessage.length-1));

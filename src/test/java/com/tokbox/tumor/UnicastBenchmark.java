@@ -19,7 +19,6 @@ public class UnicastBenchmark {
 		this.numClients = numClients;
 		this.numMessages = numMessages;
 		this.routerAddress = routerAddress;
-		System.out.println("myRouterAddress="+routerAddress);
 	}
 	
 	private AtomicInteger routableMessagesReceived = new AtomicInteger(0);
